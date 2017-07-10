@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>My First JS Game!</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            background: #eee;
+            display: block;
+            margin: 50px auto;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="myCanvas" width="1080" height="720"></canvas>
+
+<script>
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    var ballX = canvas.width / 2;
+    var ballY = canvas.height / 2;
+    var ballVelX = 10;
+    var ballVelY = -10;
+    var ballRadius = 10;
+    initializeBall();
+
+    var paddleHeight = 10;
+    var paddleWidth = 150;
+    var paddleX = (canvas.width - paddleWidth) / 2;
+    var paddleVel  = 7;
+
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // Brick's stats
+    var brickRowCount = 5;
+    var brickColumnCount = 9;
+    var brickWidth = 100;
+    var brickHeight = 30;
+    var brickPadding = 10;
+    var brickOffsetTop = 40;
+    var brickOffsetLeft = 40;
+    var bricks = [];
+
+    // Game's stats
+    var score = 0;
+    var lives = 3;
+
+    for(var i = 0; i < brickColumnCount; i++){
+        bricks[i] = [];
+        for(var j = 0; j < brickRowCount; j++){
+            bricks[i][j] = {
+                x: 0,
+                y: 0,
+                status: 1   // 1 when brick must is present; 0 when brick is absent
+            };
+        }
+    }
+
+    function drawScore(){
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Score: " + score, 8, 20);
+    }
+
+    function collisionDetection(){
+        for(var i = 0; i < brickColumnCount; i++){
+            for(var j = 0; j < brickRowCount; j++){
+                var brick = bricks[i][j];
+                if(ballX > brick.x && ballX < brick.x + brickWidth
+                && ballY > brick.y && ballY < brick.y + brickHeight){
+                    ballVelY = -ballVelY;
+                    brick.status = 0;
+                    brick.x = 9999;
+                    brick.y = 9999;
+                    score++;
+                    if(score === brickRowCount * brickColumnCount){
+                        alert("YOU WIN, CONGRATULATIONS!");
+                        document.location.reload();
+                    }
+                }
+            }
+        }
+    }
+
+    function drawBricks() {
+        for(var i = 0; i < brickColumnCount; i++){
+            for(var j = 0; j < brickRowCount; j++){
+                if(bricks[i][j].status === 1) {
+                    var brickX = (i * (brickWidth + brickPadding)) + brickOffsetLeft;
+                    var brickY = (j * (brickHeight + brickPadding)) + brickOffsetTop;
+                    bricks[i][j].x = brickX;
+                    bricks[i][j].y = brickY;
+                    ctx.beginPath();
+                    ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                    ctx.fillStype = "#0095DD";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawScore();
+        drawLives();
+        collisionDetection();
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    function drawPaddle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = "#0095DD";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, ballRadius, 0, Math.PI*2);
+        ctx.fillStyle = "#0095DD";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function update() {
+        if(ballX > canvas.width - ballRadius || ballX < ballRadius){
+            ballVelX = -ballVelX;
+        }
+        if(ballY < ballRadius){
+            ballVelY = -ballVelY;
+        } else if(ballY > canvas.height - ballRadius){
+            if(ballX > paddleX - 1 && ballX < paddleX + paddleWidth + 1){   // Adds one to make it harder to miss
+                ballVelY = -ballVelY;
+            } else {
+                lives--;
+                if(lives > 0){
+                    ballX = canvas.width / 2;
+                    ballY = canvas.height - 30;
+                    ballVelX = ballVelX > 0 ? ballVelX : -ballVelX;
+                    ballVelY = ballVelY > 0 ? -ballVelY : ballVelY;
+                    paddleX = (canvas.width - paddleWidth) / 2;
+                } else {
+                    alert("GAME OVER");
+                    document.location.reload();
+                }
+            }
+        }
+        ballX += ballVelX;
+        ballY += ballVelY;
+        if(rightPressed && paddleX < canvas.width - paddleWidth){
+            paddleX += paddleVel;
+        } else if(leftPressed && paddleX > 0){
+            paddleX -= paddleVel;
+        }
+    }
+
+    function initializeBall(){
+
+    }
+
+    function keyDownHandler(e){
+        if(e.keyCode === 39){
+            rightPressed = true;
+        } else if(e.keyCode === 37){
+            leftPressed  = true;
+        }
+    }
+
+    function keyUpHandler(e){
+        if(e.keyCode === 39){
+            rightPressed = false;
+        } else if(e.keyCode === 37){
+            leftPressed = false;
+        }
+    }
+
+    function drawLives(){
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Lives: " + lives, canvas.width - 65, 20);
+    }
+
+    function mouseMoveHandler(e){
+        var relativeX = e.clientX - canvas.offsetLeft;
+        if(relativeX > 0 && relativeX < canvas.width) {  // Controls paddle with mouse
+            paddleX = relativeX - paddleWidth / 2;      // Paddle's center aligns to mouse's location
+        }
+        if(paddleX < 0){
+            paddleX = 0;
+        } else if(paddleX > canvas.width - paddleWidth){
+            paddleX = canvas.width - paddleWidth;
+        }
+    }
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+    document.addEventListener("mousemove", mouseMoveHandler, false) ;
+    draw();
+
+</script>
+
+</body>
+</html>
